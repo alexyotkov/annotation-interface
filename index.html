@@ -6,29 +6,25 @@
   <title>Annotation Task</title>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <style>
-    /* ====== LAYOUT & COLOURS ===== */
+
     :root { --primary:#0066ff; --bg:#fafafa; --card:#ffffff; --text:#222222; }
     body{font-family:system-ui,sans-serif;margin:0;background:var(--bg);color:var(--text)}
 
-    /* Header */
     #header{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--primary);color:#fff;position:sticky;top:0}
     #progressOuter{flex:1;height:8px;background:#ffffff55;border-radius:4px;overflow:hidden}
     #progressBar{height:100%;width:0;background:#fff}
 
-    /* Core blocks */
     #question{padding:16px;background:var(--card);font-weight:600;font-size:1.1rem}
     .answer{background:var(--card);margin:12px 16px;padding:12px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.1)}
     .answer pre{white-space:pre-wrap;margin:0}
     .labelRow{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
 
-    /* Confirm button */
     #confirmWrap{text-align:right;padding:20px 16px}
     #confirmBtn{background:var(--primary);color:#fff;font-size:1rem;padding:10px 28px;border:none;border-radius:10px;cursor:pointer;transition:filter .15s ease,opacity .15s ease}
     #confirmBtn:not(:disabled):hover{filter:brightness(1.1)}
     #confirmBtn:not(:disabled):active{filter:brightness(.9)}
     button[disabled]{opacity:.5;cursor:default}
 
-    /* Sidebar */
     #sidebar{position:fixed;top:0;right:-320px;width:300px;height:100%;background:var(--card);box-shadow:-2px 0 8px rgba(0,0,0,.2);transition:right .25s ease;z-index:1000}
     #sidebar.open{right:0}
     #sidebarContent{padding:16px;height:100%;overflow:auto;position:relative}
@@ -37,19 +33,16 @@
   </style>
 </head>
 <body>
-  <!-- ===== Header ===== -->
   <div id="header">
     <div id="step">Q 1/5</div>
     <div id="progressOuter"><div id="progressBar"></div></div>
     <div id="timer">05:00</div>
   </div>
 
-  <!-- ===== Main task area ===== -->
   <div id="question"></div>
   <div id="answers"></div>
   <div id="confirmWrap"><button id="confirmBtn" disabled>Confirm</button></div>
 
-  <!-- ===== Sidebar rules ===== -->
   <div id="sidebarToggle">Rules ▸</div>
   <div id="sidebar">
     <div id="sidebarContent">
@@ -62,9 +55,9 @@
   </div>
 
 <script>
-/***** === CONFIG === *****/
+
 const COLLECTOR_URL = "https://script.google.com/macros/s/AKfycbww9ybB0ijDQpzhp6F2cNjfOzNY7YBHiR3dfqitjOHKyTdzVzAYujGCFEM6nZgNrTLB/exec"; // update before deploy
-const TOTAL_TIME = 5*60; // seconds
+const TOTAL_TIME = 5*60; 
 const TASKS = [
   {
     q: "How do I boil an egg so the yolk is firm?",
@@ -113,15 +106,15 @@ const TASKS = [
   }
 ];
 
-/***** === LOGGING SETUP === *****/
+
 const pid = new URLSearchParams(location.search).get('pid') || 'anon';
 const log = { pid, started: Date.now(), events: [] };
 function add(ev, extra={}){ log.events.push({ t: Date.now(), ev, ...extra }); }
 ['click','focus','blur'].forEach(eType=>document.addEventListener(eType,e=>add(eType,{id:e.target.id})));
-/***** === STATE & ELEMENTS === *****/
-let idx = 0;               // current task index
-let selections = {};       // answerId -> label
-let lockTimer = null;      // 2‑second reflection gate timer
+
+let idx = 0;               
+let selections = {};       
+let lockTimer = null;      
 let countdown = TOTAL_TIME;
 const qE=document.getElementById('question');
 const aWrap=document.getElementById('answers');
@@ -140,7 +133,7 @@ function toggleSidebar(){
   sidebarT.textContent=open?'◂ Rules':'Rules ▸';
   add(open?'sidebar_open':'sidebar_close');
 }
-/***** === RENDER TASK === *****/
+
 function renderTask(){
   const t=TASKS[idx];
   selections={};
@@ -172,11 +165,11 @@ function checkReady(){
     cBtn.disabled=true;
   }else{
     clearTimeout(lockTimer);
-    cBtn.disabled=true; // start 2‑second gate
+    cBtn.disabled=true; 
     lockTimer=setTimeout(()=>cBtn.disabled=false,2000);
   }
 }
-/***** === FLOW CONTROL === *****/
+
 cBtn.onclick=()=>{
   TASKS[idx].answers.forEach(a=>add('label_confirm',{task:idx,answerId:a.id,label:selections[a.id]}));
   idx++;
@@ -185,25 +178,23 @@ cBtn.onclick=()=>{
 function finish () {
   add('task_complete');
   bar.style.width = '100%';
-  clearInterval(timerInt);            // stop the timer immediately
+  clearInterval(timerInt);            
 
   fetch(COLLECTOR_URL, {
     method:  'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body:    JSON.stringify(log),
-    keepalive: true                   // OK to leave in
+    keepalive: true                   
   })
   .then(res => {
-    /* res.ok is true for any 2xx status */
     if (res.ok) {
       alert('All done – you may close the tab.');
     } else {
-      fallbackDownload();             // e.g. 403 if the endpoint is mis-configured
+      fallbackDownload();             
     }
   })
-  .catch(fallbackDownload);           // network error, offline, etc.
+  .catch(console.log("Network Error"));          
 
-  /* ---------- helper ---------- */
   function fallbackDownload () {
     const blob = new Blob([JSON.stringify(log, null, 2)], {
       type: 'application/json'
@@ -212,16 +203,15 @@ function finish () {
     alert('Network issue – a file downloaded; please send it to the researcher.');
   }
 }
-/***** === TIMER === *****/
+
 add('timer_start',{duration:TOTAL_TIME});
 const timerInt=setInterval(()=>{
   countdown--; if(countdown<0){finish();return;}
   const m=String(Math.floor(countdown/60)).padStart(2,'0');
   const s=String(countdown%60).padStart(2,'0');
-  timeE.textContent = `${m}:${s}`;   // update on-screen clock
+  timeE.textContent = `${m}:${s}`;   
 }, 1000);
 
-// ── bootstrap first micro-task ──
 renderTask();
 </script>
 </body>
