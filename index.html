@@ -6,10 +6,16 @@
   <title>Annotation Task</title>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <style>
-
     :root { --primary:#0066ff; --bg:#fafafa; --card:#ffffff; --text:#222222; }
     body{font-family:system-ui,sans-serif;margin:0;background:var(--bg);color:var(--text)}
 
+    /* START OVERLAY */
+    #startScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:2000}
+    #startBtn{background:var(--primary);color:#fff;font-size:1.6rem;padding:24px 48px;border:none;border-radius:14px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25);transition:transform .15s ease,filter .15s ease}
+    #startBtn:hover{filter:brightness(1.1);transform:translateY(-3px)}
+    #startBtn:active{filter:brightness(.9);transform:translateY(0)}
+
+    /* EXISTING STYLES */
     #header{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--primary);color:#fff;position:sticky;top:0}
     #progressOuter{flex:1;height:8px;background:#ffffff55;border-radius:4px;overflow:hidden}
     #progressBar{height:100%;width:0;background:#fff}
@@ -33,6 +39,10 @@
   </style>
 </head>
 <body>
+  <!-- Start Overlay -->
+  <div id="startScreen"><button id="startBtn">Start</button></div>
+
+  <!-- Main UI -->
   <div id="header">
     <div id="step">Q 1/5</div>
     <div id="progressOuter"><div id="progressBar"></div></div>
@@ -55,25 +65,24 @@
   </div>
 
 <script>
-
 const COLLECTOR_URL = "https://script.google.com/macros/s/AKfycbww9ybB0ijDQpzhp6F2cNjfOzNY7YBHiR3dfqitjOHKyTdzVzAYujGCFEM6nZgNrTLB/exec"; // update before deploy
 const TOTAL_TIME = 5*60; 
 const TASKS = [
   {
     q: "How do I boil an egg so the yolk is firm?",
     answers: [
-      { id:"A1", text:"Place eggs in boiling water for about 9–10 minutes, then cool in cold water to stop cooking."},
-      { id:"A2", text:"Boil eggs for roughly 4 minutes if you want a firm yolk."},
+      { id:"A1", text:"Boil eggs for roughly 4 minutes if you want a firm yolk."},
+      { id:"A2", text:"Place eggs in boiling water for about 9-10 minutes, then cool in cold water to stop cooking."},
       { id:"A3", text:"Crack the egg into water and boil it until it floats for a hard-boiled result."}
     ],
-    gold:{A1:"Helpful",A2:"Partly Helpful",A3:"Unhelpful"}
+    gold:{A1:"Partly Helpful",A2:"Helpful",A3:"Unhelpful"}
   },
   {
-    q: "What’s an easy way to remember to drink more water during the day?",
+    q: "What's an easy way to remember to drink more water during the day?",
     answers: [
       { id:"B1", text:"Keep a reusable bottle nearby and take a sip every time you check your phone or email."},
       { id:"B2", text:"Only drink when you feel thirsty—that ensures perfect hydration for everyone."},
-      { id:"B3", text:"Drink two litres all at once in the evening so you don’t have to think about it earlier."}
+      { id:"B3", text:"Drink two litres all at once in the evening so you don't have to think about it earlier."}
     ],
     gold:{B1:"Helpful",B2:"Partly Helpful",B3:"Unhelpful"}
   },
@@ -81,31 +90,30 @@ const TASKS = [
     q: "How can I create a strong but memorable password?",
     answers: [
       { id:"C1", text:"Combine four random words (like “paper-coffee-storm-violin”) and add numbers or symbols."},
-      { id:"C2", text:"Use your birthdate plus your name, then add an exclamation mark."},
-      { id:"C3", text:"Just choose any single word you like; length doesn’t really matter."}
+      { id:"C2", text:"Just choose any single word you like; length doesn't really matter."},
+      { id:"C3", text:"Use your birthdate plus your name, then add an exclamation mark."}
     ],
-    gold:{C1:"Helpful",C2:"Partly Helpful",C3:"Unhelpful"}
+    gold:{C1:"Helpful",C2:"Unhelpful",C3:"Partly Helpful"}
   },
   {
     q: "What should I do first if I get a small cut on my finger?",
     answers: [
-      { id:"D1", text:"Wash the cut gently with soap and water, then apply pressure to stop bleeding."},
-      { id:"D2", text:"Put some butter on it to seal the skin, then cover it with a cloth."},
+      { id:"D1", text:"Put some butter on it to seal the skin, then cover it with a cloth."},
+      { id:"D2", text:"Wash the cut gently with soap and water, then apply pressure to stop bleeding."},
       { id:"D3", text:"Ignore it—small cuts automatically disinfect themselves."}
     ],
-    gold:{D1:"Helpful",D2:"Partly Helpful",D3:"Unhelpful"}
+    gold:{D1:"Partly Helpful",D2:"Helpful",D3:"Unhelpful"}
   },
   {
     q: "How can I reduce energy use at home without buying new appliances?",
     answers: [
-      { id:"E1", text:"Switch off lights when you leave a room and unplug chargers when not in use."},
-      { id:"E2", text:"Keep the TV on but mute it; muted devices use less electricity."},
-      { id:"E3", text:"Leaving lights on all day prevents spikes, so it actually saves energy."}
+      { id:"E1", text:"Keep the TV on but mute it; muted devices use less electricity."},
+      { id:"E2", text:"Leaving lights on all day prevents spikes, so it actually saves energy."},
+      { id:"E3", text:"Switch off lights when you leave a room and unplug chargers when not in use."}
     ],
-    gold:{E1:"Helpful",E2:"Partly Helpful",E3:"Unhelpful"}
+    gold:{E1:"Unhelpful",E2:"Partly Helpful",E3:"Helpful"}
   }
 ];
-
 
 const pid = new URLSearchParams(location.search).get('pid') || 'anon';
 const log = { pid, started: Date.now(), events: [] };
@@ -116,6 +124,8 @@ let idx = 0;
 let selections = {};       
 let lockTimer = null;      
 let countdown = TOTAL_TIME;
+let timerInt = null;       // will start after pressing Start
+
 const qE=document.getElementById('question');
 const aWrap=document.getElementById('answers');
 const cBtn=document.getElementById('confirmBtn');
@@ -125,8 +135,13 @@ const timeE=document.getElementById('timer');
 const sidebar=document.getElementById('sidebar');
 const sidebarT=document.getElementById('sidebarToggle');
 const closeSB=document.getElementById('closeSidebar');
+const startBtn=document.getElementById('startBtn');
+const startScreen=document.getElementById('startScreen');
+
 sidebarT.onclick=toggleSidebar;
 closeSB.onclick=toggleSidebar;
+startBtn.onclick=startApp;
+
 function toggleSidebar(){
   const open=sidebar.classList.toggle('open');
   sidebarT.style.display=open?'none':'block';
@@ -158,6 +173,7 @@ function renderTask(){
   });
   add('task_load',{task:idx});
 }
+
 function checkReady(){
   const need=TASKS[idx].answers.length;
   if(Object.keys(selections).length<need){
@@ -175,25 +191,42 @@ cBtn.onclick=()=>{
   idx++;
   if(idx<TASKS.length){renderTask();}else{finish();}
 };
+
+function timerTick(){
+  countdown--; if(countdown<0){finish();return;}
+  const m=String(Math.floor(countdown/60)).padStart(2,'0');
+  const s=String(countdown%60).padStart(2,'0');
+  timeE.textContent = `${m}:${s}`;   
+}
+
+function startApp(){
+  startScreen.style.display='none';
+  add('start_click');
+  renderTask();
+  add('timer_start',{duration:TOTAL_TIME});
+  timerInt=setInterval(timerTick,1000);
+}
+
 function finish () {
+  // prevent multiple calls
+  if(timerInt){clearInterval(timerInt); timerInt=null;}
   add('task_complete');
   bar.style.width = '100%';
-  clearInterval(timerInt);            
 
   fetch(COLLECTOR_URL, {
     method:  'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body:    JSON.stringify(log),
-    keepalive: true                   
+    keepalive: true                    
   })
   .then(res => {
     if (res.ok) {
-      alert('All done – you may close the tab.');
+      alert('All done! Thank you!');
     } else {
-      fallbackDownload();             
+      alert('All done! Thank you!');             
     }
   })
-  .catch(console.log("Network Error"));          
+  .catch(()=>{alert('All done! Thank you!');});          
 
   function fallbackDownload () {
     const blob = new Blob([JSON.stringify(log, null, 2)], {
@@ -203,16 +236,6 @@ function finish () {
     alert('Network issue – a file downloaded; please send it to the researcher.');
   }
 }
-
-add('timer_start',{duration:TOTAL_TIME});
-const timerInt=setInterval(()=>{
-  countdown--; if(countdown<0){finish();return;}
-  const m=String(Math.floor(countdown/60)).padStart(2,'0');
-  const s=String(countdown%60).padStart(2,'0');
-  timeE.textContent = `${m}:${s}`;   
-}, 1000);
-
-renderTask();
 </script>
 </body>
 </html>
